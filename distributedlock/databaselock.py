@@ -26,6 +26,7 @@ class DatabaseLock(object):
         self.instance_id = uuid.uuid1().hex
 
     def _create_lock(self):
+        from .models import Lock
         return Lock.objects.create(key=self.key, value=self.instance_id, timestamp=datetime.now())
 
     def acquire(self, blocking=True):
