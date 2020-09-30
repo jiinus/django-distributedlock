@@ -4,6 +4,7 @@ import logging
 from django.db import IntegrityError
 
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class DatabaseLock(object):
             try_again = False
             try:
                 lock = Lock.objects.get(key=self.key)
-                timestamp_threshold = datetime.now() - timedelta(seconds=self.timeout)
+                timestamp_threshold = timezone.now() - timedelta(seconds=self.timeout)
                 if lock.timestamp < timestamp_threshold:
                     lock.delete()
                     try_again = True
