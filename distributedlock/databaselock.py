@@ -28,7 +28,7 @@ class DatabaseLock(object):
 
     def _create_lock(self):
         from .models import Lock
-        return Lock.objects.create(key=self.key, value=self.instance_id, timestamp=datetime.now())
+        return Lock.objects.create(key=self.key, value=self.instance_id, timestamp=timezone.now())
 
     def acquire(self, blocking=True):
         from .models import Lock
