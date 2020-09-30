@@ -3,6 +3,8 @@ import logging
 
 from django.db import IntegrityError
 
+from datetime import datetime, timedelta
+
 log = logging.getLogger(__name__)
 
 
@@ -23,22 +25,41 @@ class DatabaseLock(object):
         # identify who has the lock
         self.instance_id = uuid.uuid1().hex
 
+    def _create_lock(self):
+        return Lock.objects.create(key=self.key, value=self.instance_id, timestamp=datetime.now())
+
     def acquire(self, blocking=True):
         from .models import Lock
+
         try:
-            lock = Lock.objects.create(key=self.key)
+            lock = self._create_lock()
         except IntegrityError:
             # We rely on the DB to enforce the unique index on the key column
+
+            # Check if the current lock timestamp is in the past and if so, delete the old lock and try again
+            try_again = False
+            try:
+                lock = Lock.objects.get(key=self.key)
+                timestamp_threshold = datetime.now() - timedelta(seconds=self.timeout)
+                if lock.timestamp < timestamp_threshold:
+                    lock.delete()
+                    try_again = True
+            except Lock.DoesNotExist:
+                # Someone else deleted the lock already
+                try_again = True
+
+            if try_again:
+                lock = self._create_lock()
+                return True
+
             return False
 
-        lock.value = self.instance_id
-        lock.save()
         return True
 
     def release(self):
         from .models import Lock
-        lock = Lock.objects.get(key=self.key, value=self.instance_id)
-        if lock:
+        try:
+            lock = Lock.objects.get(key=self.key, value=self.instance_id)
             lock.delete()
-        else:
+        except Lock.DoesNotExist:
             log.warning("I've no lock in DB to release. Increase TIMEOUT of lock operations")

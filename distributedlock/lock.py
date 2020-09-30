@@ -26,7 +26,7 @@ class LockNotAcquiredError(Exception):
 
 
 class distributedlock(object):
-    def __init__(self, key=None, lock=None, blocking=None):
+    def __init__(self, key=None, lock=None, blocking=None, timeout=None):
         self.lock = lock
         if blocking is None:
             self.blocking = DISTRIBUTEDLOCK_BLOCKING
@@ -38,8 +38,9 @@ class distributedlock(object):
             key = "%s:%s" % (f.__module__, f.__name__)
 
         if not self.lock:
+            lock_timeout = timeout or DISTRIBUTEDLOCK_TIMEOUT
             LockFactory = self.get_lock_factory()
-            self.lock = LockFactory(key, timeout=DISTRIBUTEDLOCK_TIMEOUT)
+            self.lock = LockFactory(key, timeout=lock_timeout)
 
     def __call__(self, f):
         """ for use with decorator """
